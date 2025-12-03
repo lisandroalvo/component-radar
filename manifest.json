@@ -1,0 +1,16 @@
+{
+  "name": "Component Radar",
+  "id": "component-radar",
+  "api": "1.0.0",
+ "main": "code.js",
+  "ui": "ui.html",
+  "editorType": ["figma"],
+  "networkAccess": {
+    "allowedDomains": ["https://api.figma.com"],
+    "reasoning": "Required to access Figma REST API for cross-file component scanning"
+  },
+  "permissions": ["currentuser", "fileusers"],
+  "documentAccess": "dynamic-page",
+  "capabilities": [],
+  "enableProposedApi": true
+}

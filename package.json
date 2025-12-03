@@ -1,0 +1,21 @@
+{
+  "name": "component-usage-explorer",
+  "version": "1.0.0",
+  "description": "Figma plugin to track all instances of a master component across files",
+  "main": "code.js",
+  "scripts": {
+    "build": "npm run build:code && npm run build:ui",
+    "build:code": "node esbuild.code.mjs",
+    "build:ui": "node esbuild.ui.mjs",
+    "watch": "npm run watch:code & npm run watch:ui",
+    "watch:code": "tsc -p tsconfig.json --watch",
+    "watch:ui": "tsc -p tsconfig.ui.json --watch"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.90.0",
+    "esbuild": "^0.27.0",
+    "typescript": "^5.3.0"
+  }
+}

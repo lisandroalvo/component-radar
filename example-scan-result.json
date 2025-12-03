@@ -1,0 +1,82 @@
+{
+  "sessionId": "scan-1234567890-abc123",
+  "masterComponent": {
+    "id": "1:123",
+    "key": "abc123def456",
+    "name": "Button/Primary",
+    "isRemote": false,
+    "libraryName": "Design System",
+    "sessionId": "scan-1234567890-abc123"
+  },
+  "totalInstances": 15,
+  "records": [
+    {
+      "id": "current-file-1:234-1234567890",
+      "fileName": "Landing Page",
+      "fileKey": "current-file",
+      "pageName": "Homepage",
+      "pageId": "0:1",
+      "nodeName": "CTA Button",
+      "nodeId": "1:234",
+      "instanceType": "direct",
+      "path": ["Homepage", "Hero Section", "CTA Button"],
+      "variant": null,
+      "timestamp": 1234567890000
+    },
+    {
+      "id": "current-file-1:345-1234567891",
+      "fileName": "Landing Page",
+      "fileKey": "current-file",
+      "pageName": "Homepage",
+      "pageId": "0:1",
+      "nodeName": "Submit Button",
+      "nodeId": "1:345",
+      "instanceType": "nested",
+      "path": ["Homepage", "Form Section", "Contact Form", "Submit Button"],
+      "variant": "size=large, state=default",
+      "timestamp": 1234567891000
+    },
+    {
+      "id": "current-file-1:456-1234567892",
+      "fileName": "Landing Page",
+      "fileKey": "current-file",
+      "pageName": "Features",
+      "pageId": "0:2",
+      "nodeName": "Learn More",
+      "nodeId": "1:456",
+      "instanceType": "direct",
+      "path": ["Features", "Feature Card 1", "Learn More"],
+      "variant": "size=medium, state=hover",
+      "timestamp": 1234567892000
+    },
+    {
+      "id": "current-file-1:567-1234567893",
+      "fileName": "Landing Page",
+      "fileKey": "current-file",
+      "pageName": "Features",
+      "pageId": "0:2",
+      "nodeName": "Get Started",
+      "nodeId": "1:567",
+      "instanceType": "direct",
+      "path": ["Features", "Feature Card 2", "Get Started"],
+      "variant": null,
+      "timestamp": 1234567893000
+    },
+    {
+      "id": "current-file-1:678-1234567894",
+      "fileName": "Landing Page",
+      "fileKey": "current-file",
+      "pageName": "Pricing",
+      "pageId": "0:3",
+      "nodeName": "Choose Plan",
+      "nodeId": "1:678",
+      "instanceType": "nested",
+      "path": ["Pricing", "Pricing Table", "Pro Plan", "Choose Plan"],
+      "variant": "size=large, state=default",
+      "timestamp": 1234567894000
+    }
+  ],
+  "scanDuration": 1250,
+  "timestamp": 1234567890000,
+  "errors": []
+}
