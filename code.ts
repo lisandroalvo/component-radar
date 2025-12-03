@@ -180,6 +180,16 @@ async function handleStartScan(config: ScanConfig) {
     console.log("Backend: handleStartScan called with config:", config);
     console.log("Backend: Scan scope:", config.scope);
     
+    // Check current selection - user might have switched to an instance after initial component selection
+    const currentSelection = figma.currentPage.selection;
+    if (currentSelection.length === 1 && currentSelection[0].type === "INSTANCE") {
+      sendToUI({
+        type: "scan-error",
+        error: "⚠️ Cannot scan an instance!\n\nYou selected an instance of a component. Please select the main component instead.\n\nTip: Look for the component in your Assets panel or find the purple diamond icon (⬦) in the layers panel.",
+      });
+      return;
+    }
+    
     // Validate that we're scanning a main component, not an instance
     const componentNode = await figma.getNodeByIdAsync(config.masterComponent.id);
     if (!componentNode) {
@@ -605,15 +615,6 @@ figma.ui.onmessage = async (msg: UIMessage) => {
  */
 figma.on("selectionchange", async () => {
   const selection = figma.currentPage.selection;
-
-  // Check if user selected an instance
-  if (selection.length === 1 && selection[0].type === "INSTANCE") {
-    sendToUI({
-      type: "scan-error",
-      error: "⚠️ Cannot scan an instance!\n\nYou selected an instance of a component. Please select the main component instead.\n\nTip: Look for the component in your Assets panel or find the purple diamond icon (⬦) in the layers panel.",
-    });
-    return;
-  }
 
   if (selection.length === 1 && selection[0].type === "COMPONENT") {
     const component = selection[0] as ComponentNode;
