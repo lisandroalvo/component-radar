@@ -11,6 +11,5 @@
   },
   "permissions": ["currentuser", "fileusers"],
   "documentAccess": "dynamic-page",
-  "capabilities": [],
-  "enableProposedApi": true
+  "capabilities": []
 }
