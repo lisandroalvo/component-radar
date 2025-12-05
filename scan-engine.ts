@@ -358,6 +358,15 @@ export class ScanEngine {
             
             console.warn(`⚠️ Skipping file ${fileKey}: ${reason}`);
             skippedFiles++;
+            
+            // Report progress even for skipped files
+            this.reportProgress({
+              stage: "scanning",
+              message: `Skipped file ${i + 1}/${fileKeys.length} (${reason})`,
+              currentFileIndex: i,
+              totalFiles: fileKeys.length,
+            });
+            
             continue; // Skip this file and move to the next one
           }
           
@@ -374,6 +383,14 @@ export class ScanEngine {
         }
 
         await this.scanFileJsonInternal(fileJson, fileKey);
+        
+        // Report progress after each file is processed
+        this.reportProgress({
+          stage: "scanning",
+          message: `Scanned file ${i + 1}/${fileKeys.length}... [${i + 1}s]`,
+          currentFileIndex: i,
+          totalFiles: fileKeys.length,
+        });
         }
         
         // Add small delay between batches to avoid rate limiting
