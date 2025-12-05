@@ -425,24 +425,11 @@ export class ScanEngine {
     while (queue.length > 0 && !this.aborted) {
       const { node: currentNode, path } = queue.shift()!;
       
-      // Log first 20 nodes of each type to see what we're traversing
-      if (queue.length % 100 === 0) {
-        console.log(`ScanEngine: Traversing node type: ${currentNode.type}, name: ${currentNode.name}`);
-      }
-
       if (this.masterComponent && currentNode.type === "INSTANCE") {
-        // Log first instance structure to see all available fields
-        if (this.records.length === 0) {
-          console.log("🔍 FIRST INSTANCE IN EXTERNAL FILE - Full structure:");
-          console.log(JSON.stringify(currentNode, null, 2));
-        }
-        
         // REST API exposes component reference in the componentId field
         const componentId = currentNode.componentId;
         
         if (!componentId) {
-          console.log(`⚠️ INSTANCE "${currentNode.name}" has no componentId - skipping`);
-          console.log("   Available fields:", Object.keys(currentNode));
           continue;
         }
         
@@ -481,26 +468,6 @@ export class ScanEngine {
         }
         
         const matches = matchesByKey || matchesById || matchesByForwardLookup || matchesByComponentLookup || matchesByName;
-        
-        // Debug: Log first few instances to verify the data
-        if (this.records.length < 5) {
-          console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-          console.log(`📍 Checking INSTANCE: "${currentNode.name}" (file: ${fileKey})`);
-          console.log(`   Instance name: "${currentNode.name}"`);
-          console.log(`   Master component name: "${this.masterComponent.name}"`);
-          console.log(`   componentId from API: "${cidStr}"`);
-          console.log(`   Component key for this ID: "${componentKeyForThisId || 'N/A'}"`);
-          console.log(`   masterKey selected:   "${String(masterKey).trim()}"`);
-          console.log(`   masterId selected:    "${String(masterId).trim()}"`);
-          console.log(`   Local node ID for master key: "${localNodeIdForMasterKey || 'N/A'}"`);
-          console.log(`   Match by key: ${matchesByKey}`);
-          console.log(`   Match by ID: ${matchesById}`);
-          console.log(`   Match by forward lookup: ${matchesByForwardLookup}`);
-          console.log(`   Match by component lookup: ${matchesByComponentLookup}`);
-          console.log(`   Match by name: ${matchesByName}`);
-          console.log(`   FINAL MATCH: ${matches}`);
-          console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        }
 
         if (matches) {
           const isNested = path.length > 1;

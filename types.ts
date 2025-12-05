@@ -55,6 +55,7 @@ export interface ScanProgress {
   totalPages?: number;
   instancesFound: number;
   message: string;
+  elapsedSeconds?: number;
 }
 
 /**

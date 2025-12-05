@@ -220,11 +220,15 @@ async function handleStartScan(config: ScanConfig) {
     currentScan = new ScanEngine();
     currentScanStartTime = Date.now();
 
-    // Set up progress reporting
+    // Set up progress reporting with elapsed time
     currentScan.onProgress((progress) => {
+      const elapsedSeconds = Math.floor((Date.now() - currentScanStartTime) / 1000);
       sendToUI({
         type: "scan-progress",
-        progress,
+        progress: {
+          ...progress,
+          elapsedSeconds,
+        },
       });
     });
 
