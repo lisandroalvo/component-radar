@@ -330,13 +330,20 @@ export class ScanEngine {
         if (!res.ok) {
           const errorText = await res.text();
           
-          // If file is too large (HTTP 400), skip it and continue with other files
-          if (res.status === 400 && errorText.includes('too large')) {
-            console.warn(`⚠️ Skipping file ${fileKey}: File is too large for API response`);
+          // If file is too large or unsupported type (HTTP 400), skip it and continue
+          if (res.status === 400) {
+            let reason = 'unsupported';
+            if (errorText.includes('too large')) {
+              reason = 'too large';
+            } else if (errorText.includes('File type not supported')) {
+              reason = 'unsupported file type (e.g. FigJam)';
+            }
+            
+            console.warn(`⚠️ Skipping file ${fileKey}: ${reason}`);
             skippedFiles++;
             this.reportProgress({
               stage: "scanning",
-              message: `⚠️ Skipped file ${i + 1}/${fileKeys.length} (too large)`,
+              message: `⚠️ Skipped file ${i + 1}/${fileKeys.length} (${reason})`,
             });
             continue; // Skip this file and move to the next one
           }
@@ -373,7 +380,7 @@ export class ScanEngine {
 
     const scannedFiles = fileKeys.length - skippedFiles;
     const skippedMessage = skippedFiles > 0 
-      ? ` (${skippedFiles} file${skippedFiles > 1 ? 's' : ''} skipped - too large)` 
+      ? ` (${skippedFiles} file${skippedFiles > 1 ? 's' : ''} skipped)` 
       : '';
     
     this.reportProgress({
