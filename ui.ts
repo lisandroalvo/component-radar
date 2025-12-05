@@ -27,6 +27,8 @@ let detectedProjectId: string | null = null;
 let currentFileKey: string | null = null; // Track the current Figma file key
 let scanStartTime: number = 0;
 let timerInterval: number | null = null;
+let totalFiles: number = 0;
+let filesScanned: number = 0;
 
 // ============================================================================
 // DOM ELEMENTS
@@ -136,6 +138,8 @@ function startTimer() {
   console.log("Timer display element exists?", !!timerDisplayEl);
   
   scanStartTime = Date.now();
+  totalFiles = 0;
+  filesScanned = 0;
   
   if (scanTimerEl) {
     scanTimerEl.classList.add('active');
@@ -163,7 +167,17 @@ function startTimer() {
  */
 function updateTimer() {
   const elapsed = Math.floor((Date.now() - scanStartTime) / 1000);
-  timerDisplayEl.textContent = formatTime(elapsed);
+  let displayText = formatTime(elapsed);
+  
+  // Calculate estimated time remaining if we have progress data
+  if (totalFiles > 0 && filesScanned > 0 && filesScanned < totalFiles) {
+    const avgTimePerFile = elapsed / filesScanned;
+    const filesRemaining = totalFiles - filesScanned;
+    const estimatedRemaining = Math.ceil(avgTimePerFile * filesRemaining);
+    displayText += ` • ~${formatTime(estimatedRemaining)} left`;
+  }
+  
+  timerDisplayEl.textContent = displayText;
 }
 
 /**
@@ -729,10 +743,13 @@ window.onmessage = (event) => {
         : '';
       addLogEntry(progress.message + timerText, progress.stage === "error" ? "error" : "info");
 
-      // Update progress bar (rough estimate)
+      // Update progress bar and tracking variables
       if (progress.currentFileIndex !== undefined && progress.totalFiles !== undefined) {
-        const percentage = ((progress.currentFileIndex + 1) / progress.totalFiles) * 100;
+        totalFiles = progress.totalFiles;
+        filesScanned = progress.currentFileIndex + 1;
+        const percentage = (filesScanned / totalFiles) * 100;
         progressFill.style.width = `${percentage}%`;
+        updateTimer(); // Update timer to show new ETA
       } else if (progress.currentPageIndex !== undefined && progress.totalPages !== undefined) {
         const percentage = ((progress.currentPageIndex + 1) / progress.totalPages) * 100;
         progressFill.style.width = `${percentage}%`;

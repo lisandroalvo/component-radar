@@ -2302,7 +2302,7 @@
         <!-- Timer Display -->
         <div id="scan-timer" class="scan-timer">
           <div style="font-size: 14px; opacity: 0.7; margin-bottom: 4px; letter-spacing: 1px;">SCANNING TIME</div>
-          <div style="font-size: 36px; font-weight: 800;">⏱️ <span id="timer-display">00:00</span></div>
+          <div style="font-size: 28px; font-weight: 800; line-height: 1.3;">⏱️ <span id="timer-display">00:00</span></div>
         </div>
 
         <!-- Progress Section -->
@@ -2478,6 +2478,8 @@
   var detectedProjectId = null;
   var scanStartTime = 0;
   var timerInterval = null;
+  var totalFiles = 0;
+  var filesScanned = 0;
   var tabs = document.querySelectorAll(".tab");
   var tabContents = document.querySelectorAll(".tab-content");
   var componentInfoEl = document.getElementById("component-info");
@@ -2535,6 +2537,8 @@
     console.log("Timer element exists?", !!scanTimerEl);
     console.log("Timer display element exists?", !!timerDisplayEl);
     scanStartTime = Date.now();
+    totalFiles = 0;
+    filesScanned = 0;
     if (scanTimerEl) {
       scanTimerEl.classList.add("active");
       scanTimerEl.style.display = "block";
@@ -2553,7 +2557,14 @@
   }
   function updateTimer() {
     const elapsed = Math.floor((Date.now() - scanStartTime) / 1e3);
-    timerDisplayEl.textContent = formatTime(elapsed);
+    let displayText = formatTime(elapsed);
+    if (totalFiles > 0 && filesScanned > 0 && filesScanned < totalFiles) {
+      const avgTimePerFile = elapsed / filesScanned;
+      const filesRemaining = totalFiles - filesScanned;
+      const estimatedRemaining = Math.ceil(avgTimePerFile * filesRemaining);
+      displayText += ` \u2022 ~${formatTime(estimatedRemaining)} left`;
+    }
+    timerDisplayEl.textContent = displayText;
   }
   function stopTimer() {
     if (timerInterval !== null) {
@@ -2948,8 +2959,11 @@
         const timerText = progress.elapsedSeconds !== void 0 ? ` [${progress.elapsedSeconds}s]` : "";
         addLogEntry(progress.message + timerText, progress.stage === "error" ? "error" : "info");
         if (progress.currentFileIndex !== void 0 && progress.totalFiles !== void 0) {
-          const percentage = (progress.currentFileIndex + 1) / progress.totalFiles * 100;
+          totalFiles = progress.totalFiles;
+          filesScanned = progress.currentFileIndex + 1;
+          const percentage = filesScanned / totalFiles * 100;
           progressFill.style.width = `${percentage}%`;
+          updateTimer();
         } else if (progress.currentPageIndex !== void 0 && progress.totalPages !== void 0) {
           const percentage = (progress.currentPageIndex + 1) / progress.totalPages * 100;
           progressFill.style.width = `${percentage}%`;
