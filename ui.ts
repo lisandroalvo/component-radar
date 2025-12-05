@@ -589,6 +589,15 @@ btnStartScan.addEventListener("click", () => {
   // For entire-project, request project ID from backend
   if (scope === "entire-project") {
     console.log("Entire project scan - requesting project ID from backend");
+    
+    // Start UI state and timer BEFORE requesting project ID
+    isScanning = true;
+    btnStartScan.disabled = true;
+    progressSection.classList.add("active");
+    startTimer();
+    clearLog();
+    addLogEntry("🔍 Initializing scan...", "info");
+    
     // Backend will auto-detect project ID
     sendToPlugin({
       type: "get-project-id",

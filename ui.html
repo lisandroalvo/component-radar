@@ -2871,6 +2871,12 @@
     }
     if (scope === "entire-project") {
       console.log("Entire project scan - requesting project ID from backend");
+      isScanning = true;
+      btnStartScan.disabled = true;
+      progressSection.classList.add("active");
+      startTimer();
+      clearLog();
+      addLogEntry("\u{1F50D} Initializing scan...", "info");
       sendToPlugin({
         type: "get-project-id"
       });
