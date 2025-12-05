@@ -223,12 +223,10 @@ async function handleStartScan(config: ScanConfig) {
     // Set up progress reporting with elapsed time
     currentScan.onProgress((progress) => {
       const elapsedSeconds = Math.floor((Date.now() - currentScanStartTime) / 1000);
+      const progressWithTimer = Object.assign({}, progress, { elapsedSeconds });
       sendToUI({
         type: "scan-progress",
-        progress: {
-          ...progress,
-          elapsedSeconds,
-        },
+        progress: progressWithTimer,
       });
     });
 

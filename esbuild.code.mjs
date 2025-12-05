@@ -5,7 +5,7 @@ await esbuild.build({
   bundle: true,
   outfile: 'code.js',
   platform: 'node',
-  target: 'es2019',
+  target: 'es2017',
   format: 'cjs',
   logLevel: 'info',
 });
