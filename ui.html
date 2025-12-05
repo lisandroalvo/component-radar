@@ -621,6 +621,40 @@
       display: block;
     }
 
+    /* Timer Display */
+    .scan-timer {
+      display: none;
+      text-align: center;
+      padding: 12px 20px;
+      margin: 16px 0;
+      background: linear-gradient(135deg, rgba(24, 160, 251, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+      border: 1.5px solid rgba(24, 160, 251, 0.3);
+      border-radius: 12px;
+      font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', 'Consolas', monospace;
+      font-size: 18px;
+      font-weight: 600;
+      color: #18a0fb;
+      letter-spacing: 2px;
+      box-shadow: 0 4px 15px rgba(24, 160, 251, 0.2),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      animation: pulse-glow 2s ease-in-out infinite;
+    }
+
+    .scan-timer.active {
+      display: block;
+    }
+
+    @keyframes pulse-glow {
+      0%, 100% {
+        box-shadow: 0 4px 15px rgba(24, 160, 251, 0.2),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      }
+      50% {
+        box-shadow: 0 6px 20px rgba(24, 160, 251, 0.4),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+      }
+    }
+
     .progress-bar {
       width: 100%;
       height: 12px;
@@ -2258,6 +2292,11 @@
           </div>
         </div>
 
+        <!-- Timer Display -->
+        <div id="scan-timer" class="scan-timer">
+          ⏱️ <span id="timer-display">00:00</span>
+        </div>
+
         <!-- Scan Button -->
         <button id="btn-start-scan" class="button button-primary" disabled>🚀 Start Scanning</button>
 
@@ -2432,6 +2471,8 @@
   var isScanning = false;
   var currentSettings = null;
   var detectedProjectId = null;
+  var scanStartTime = 0;
+  var timerInterval = null;
   var tabs = document.querySelectorAll(".tab");
   var tabContents = document.querySelectorAll(".tab-content");
   var componentInfoEl = document.getElementById("component-info");
@@ -2440,6 +2481,8 @@
   var progressSection = document.getElementById("progress-section");
   var progressFill = document.getElementById("progress-fill");
   var progressLog = document.getElementById("progress-log");
+  var scanTimerEl = document.getElementById("scan-timer");
+  var timerDisplayEl = document.getElementById("timer-display");
   var tokenSetupEl = document.getElementById("token-setup");
   var apiTokenInput = document.getElementById("api-token-input");
   var projectIdInput = document.getElementById("project-id-input");
@@ -2476,6 +2519,33 @@
   function formatDuration(ms) {
     if (ms < 1e3) return `${ms}ms`;
     return `${(ms / 1e3).toFixed(2)}s`;
+  }
+  function formatTime(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  }
+  function startTimer() {
+    scanStartTime = Date.now();
+    scanTimerEl.classList.add("active");
+    updateTimer();
+    if (timerInterval !== null) {
+      clearInterval(timerInterval);
+    }
+    timerInterval = window.setInterval(() => {
+      updateTimer();
+    }, 1e3);
+  }
+  function updateTimer() {
+    const elapsed = Math.floor((Date.now() - scanStartTime) / 1e3);
+    timerDisplayEl.textContent = formatTime(elapsed);
+  }
+  function stopTimer() {
+    if (timerInterval !== null) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+    scanTimerEl.classList.remove("active");
   }
   function checkTokenSetup() {
     if (!tokenSetupEl) return true;
@@ -2799,6 +2869,7 @@
     isScanning = true;
     btnStartScan.disabled = true;
     progressSection.classList.add("active");
+    startTimer();
     clearLog();
     addLogEntry("\u{1F50D} Initializing scan...", "info");
     sendToPlugin({
@@ -2810,6 +2881,7 @@
     sendToPlugin({ type: "cancel-scan" });
     isScanning = false;
     btnStartScan.disabled = false;
+    stopTimer();
     progressSection.classList.remove("active");
     addLogEntry("\u26D4 Scan stopped by user", "error");
   });
@@ -2868,6 +2940,7 @@
         isScanning = false;
         btnStartScan.disabled = false;
         progressSection.classList.remove("active");
+        stopTimer();
         progressFill.style.width = "100%";
         currentScanResult = message.result;
         console.log("currentScanResult set to:", currentScanResult);
@@ -2888,6 +2961,7 @@
         isScanning = false;
         btnStartScan.disabled = false;
         progressSection.classList.remove("active");
+        stopTimer();
         addLogEntry(`\u274C Error: ${message.error}`, "error");
         alert(`\u274C Scan Failed
 

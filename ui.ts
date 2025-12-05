@@ -25,6 +25,8 @@ let isScanning = false;
 let currentSettings: PluginSettings | null = null;
 let detectedProjectId: string | null = null;
 let currentFileKey: string | null = null; // Track the current Figma file key
+let scanStartTime: number = 0;
+let timerInterval: number | null = null;
 
 // ============================================================================
 // DOM ELEMENTS
@@ -41,6 +43,8 @@ const btnCancelScan = document.getElementById("btn-cancel-scan") as HTMLButtonEl
 const progressSection = document.getElementById("progress-section")!;
 const progressFill = document.getElementById("progress-fill") as HTMLDivElement;
 const progressLog = document.getElementById("progress-log")!;
+const scanTimerEl = document.getElementById("scan-timer")!;
+const timerDisplayEl = document.getElementById("timer-display")!;
 
 // Token Setup Elements
 const tokenSetupEl = document.getElementById("token-setup");
@@ -112,6 +116,51 @@ function formatNumber(num: number): string {
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
   return `${(ms / 1000).toFixed(2)}s`;
+}
+
+/**
+ * Format time as MM:SS
+ */
+function formatTime(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+/**
+ * Start the scan timer
+ */
+function startTimer() {
+  scanStartTime = Date.now();
+  scanTimerEl.classList.add('active');
+  updateTimer();
+  
+  if (timerInterval !== null) {
+    clearInterval(timerInterval);
+  }
+  
+  timerInterval = window.setInterval(() => {
+    updateTimer();
+  }, 1000);
+}
+
+/**
+ * Update the timer display
+ */
+function updateTimer() {
+  const elapsed = Math.floor((Date.now() - scanStartTime) / 1000);
+  timerDisplayEl.textContent = formatTime(elapsed);
+}
+
+/**
+ * Stop the scan timer
+ */
+function stopTimer() {
+  if (timerInterval !== null) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+  scanTimerEl.classList.remove('active');
 }
 
 /**
@@ -544,6 +593,7 @@ btnStartScan.addEventListener("click", () => {
   isScanning = true;
   btnStartScan.disabled = true;
   progressSection.classList.add("active");
+  startTimer();
   clearLog();
   addLogEntry("🔍 Initializing scan...", "info");
 
@@ -560,6 +610,7 @@ btnCancelScan.addEventListener("click", () => {
   sendToPlugin({ type: "cancel-scan" });
   isScanning = false;
   btnStartScan.disabled = false;
+  stopTimer();
   progressSection.classList.remove("active");
   addLogEntry("⛔ Scan stopped by user", "error");
 });
@@ -672,6 +723,7 @@ window.onmessage = (event) => {
       isScanning = false;
       btnStartScan.disabled = false;
       progressSection.classList.remove("active");
+      stopTimer();
       progressFill.style.width = "100%";
 
       currentScanResult = message.result;
@@ -699,6 +751,7 @@ window.onmessage = (event) => {
       isScanning = false;
       btnStartScan.disabled = false;
       progressSection.classList.remove("active");
+      stopTimer();
       addLogEntry(`❌ Error: ${message.error}`, "error");
       alert(`❌ Scan Failed\n\n${message.error}\n\nPlease try again or check your settings.`);
       break;
