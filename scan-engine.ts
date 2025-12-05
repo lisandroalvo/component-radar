@@ -318,7 +318,8 @@ export class ScanEngine {
           totalFiles: fileKeys.length,
         });
 
-        const res = await fetch(`https://api.figma.com/v1/files/${fileKey}` as string, {
+        // Add geometry=paths to reduce response size (we don't need detailed vector data)
+        const res = await fetch(`https://api.figma.com/v1/files/${fileKey}?geometry=paths` as string, {
           method: "GET",
           headers,
         });
@@ -330,8 +331,16 @@ export class ScanEngine {
           throw new Error(`Failed to fetch file ${fileKey}: HTTP ${res.status} - ${errorText}`);
         }
 
-        const fileJson: any = await res.json();
-        console.log(`ScanEngine: File ${fileKey} name:`, fileJson.name);
+        let fileJson: any;
+        try {
+          const responseText = await res.text();
+          console.log(`ScanEngine: File ${fileKey} response length:`, responseText.length, 'chars');
+          fileJson = JSON.parse(responseText);
+          console.log(`ScanEngine: File ${fileKey} name:`, fileJson.name);
+        } catch (jsonError) {
+          console.error(`ScanEngine: JSON parse error for file ${fileKey}:`, jsonError);
+          throw new Error(`Failed to parse response for file ${fileKey}. The file might be too large or the response is incomplete.`);
+        }
 
         const beforeCount = this.records.length;
         await this.scanFileJsonInternal(fileJson, fileKey);
