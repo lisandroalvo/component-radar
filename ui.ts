@@ -650,7 +650,10 @@ window.onmessage = (event) => {
 
     case "scan-progress":
       const { progress } = message;
-      addLogEntry(progress.message, progress.stage === "error" ? "error" : "info");
+      const timerText = progress.elapsedSeconds !== undefined 
+        ? ` [${progress.elapsedSeconds}s]` 
+        : '';
+      addLogEntry(progress.message + timerText, progress.stage === "error" ? "error" : "info");
 
       // Update progress bar (rough estimate)
       if (progress.currentFileIndex !== undefined && progress.totalFiles !== undefined) {

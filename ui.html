@@ -2852,7 +2852,8 @@
         break;
       case "scan-progress":
         const { progress } = message;
-        addLogEntry(progress.message, progress.stage === "error" ? "error" : "info");
+        const timerText = progress.elapsedSeconds !== void 0 ? ` [${progress.elapsedSeconds}s]` : "";
+        addLogEntry(progress.message + timerText, progress.stage === "error" ? "error" : "info");
         if (progress.currentFileIndex !== void 0 && progress.totalFiles !== void 0) {
           const percentage = (progress.currentFileIndex + 1) / progress.totalFiles * 100;
           progressFill.style.width = `${percentage}%`;
