@@ -608,6 +608,7 @@ btnStartScan.addEventListener("click", () => {
     isScanning = true;
     btnStartScan.disabled = true;
     progressSection.classList.add("active");
+    progressFill.style.width = "0%"; // Reset progress bar
     startTimer();
     clearLog();
     addLogEntry("🔍 Initializing scan...", "info");
@@ -630,6 +631,7 @@ btnStartScan.addEventListener("click", () => {
   isScanning = true;
   btnStartScan.disabled = true;
   progressSection.classList.add("active");
+  progressFill.style.width = "0%"; // Reset progress bar
   startTimer();
   clearLog();
   addLogEntry("🔍 Initializing scan...", "info");
@@ -748,10 +750,12 @@ window.onmessage = (event) => {
         totalFiles = progress.totalFiles;
         filesScanned = progress.currentFileIndex + 1;
         const percentage = (filesScanned / totalFiles) * 100;
+        console.log(`📊 Progress: ${filesScanned}/${totalFiles} files (${percentage.toFixed(1)}%)`);
         progressFill.style.width = `${percentage}%`;
         updateTimer(); // Update timer to show new ETA
       } else if (progress.currentPageIndex !== undefined && progress.totalPages !== undefined) {
         const percentage = ((progress.currentPageIndex + 1) / progress.totalPages) * 100;
+        console.log(`📊 Progress: ${progress.currentPageIndex + 1}/${progress.totalPages} pages (${percentage.toFixed(1)}%)`);
         progressFill.style.width = `${percentage}%`;
       }
       break;

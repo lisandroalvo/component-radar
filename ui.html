@@ -2885,6 +2885,7 @@
       isScanning = true;
       btnStartScan.disabled = true;
       progressSection.classList.add("active");
+      progressFill.style.width = "0%";
       startTimer();
       clearLog();
       addLogEntry("\u{1F50D} Initializing scan...", "info");
@@ -2901,6 +2902,7 @@
     isScanning = true;
     btnStartScan.disabled = true;
     progressSection.classList.add("active");
+    progressFill.style.width = "0%";
     startTimer();
     clearLog();
     addLogEntry("\u{1F50D} Initializing scan...", "info");
@@ -2962,10 +2964,12 @@
           totalFiles = progress.totalFiles;
           filesScanned = progress.currentFileIndex + 1;
           const percentage = filesScanned / totalFiles * 100;
+          console.log(`\u{1F4CA} Progress: ${filesScanned}/${totalFiles} files (${percentage.toFixed(1)}%)`);
           progressFill.style.width = `${percentage}%`;
           updateTimer();
         } else if (progress.currentPageIndex !== void 0 && progress.totalPages !== void 0) {
           const percentage = (progress.currentPageIndex + 1) / progress.totalPages * 100;
+          console.log(`\u{1F4CA} Progress: ${progress.currentPageIndex + 1}/${progress.totalPages} pages (${percentage.toFixed(1)}%)`);
           progressFill.style.width = `${percentage}%`;
         }
         break;
