@@ -328,11 +328,21 @@ async function handleStartScan(config: ScanConfig) {
 
     currentScan = null;
   } catch (error) {
-    const errorMessage = error instanceof Error 
-      ? error.message 
-      : typeof error === 'string' 
-      ? error 
-      : JSON.stringify(error);
+    let errorMessage = "Unknown error occurred";
+    
+    try {
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error && typeof error === 'object') {
+        errorMessage = JSON.stringify(error);
+      } else {
+        errorMessage = String(error);
+      }
+    } catch (stringifyError) {
+      errorMessage = "Error occurred but couldn't be formatted";
+    }
     
     console.error("Scan error details:", error);
     
