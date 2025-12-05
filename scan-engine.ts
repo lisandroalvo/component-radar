@@ -304,26 +304,43 @@ export class ScanEngine {
 
     const headers = { "X-Figma-Token": accessToken } as const;
     let skippedFiles = 0;
+    const BATCH_SIZE = 5; // Fetch 5 files at a time for speed
 
     try {
-      for (let i = 0; i < fileKeys.length; i++) {
-        const fileKey = fileKeys[i];
+      // Process files in batches for parallel fetching
+      for (let batchStart = 0; batchStart < fileKeys.length; batchStart += BATCH_SIZE) {
+        const batchEnd = Math.min(batchStart + BATCH_SIZE, fileKeys.length);
+        const batch = fileKeys.slice(batchStart, batchEnd);
+        
+        console.log(`ScanEngine: Fetching batch ${Math.floor(batchStart / BATCH_SIZE) + 1}, files ${batchStart + 1}-${batchEnd}/${fileKeys.length}`);
+        
+        // Fetch all files in this batch in parallel
+        const fetchPromises = batch.map(async (fileKey, batchIndex) => {
+          const globalIndex = batchStart + batchIndex;
+          
+          this.reportProgress({
+            stage: "scanning",
+            message: `Fetching files ${batchStart + 1}-${batchEnd}/${fileKeys.length}...`,
+            currentFile: fileKey,
+            currentFileIndex: globalIndex,
+            totalFiles: fileKeys.length,
+          });
 
-        console.log(`ScanEngine: Scanning file ${i + 1}/${fileKeys.length}, key: ${fileKey}`);
-
-        this.reportProgress({
-          stage: "scanning",
-          message: `Fetching file ${i + 1}/${fileKeys.length}...`,
-          currentFile: fileKey,
-          currentFileIndex: i,
-          totalFiles: fileKeys.length,
+          // Add geometry=paths to reduce response size (we don't need detailed vector data)
+          const res = await fetch(`https://api.figma.com/v1/files/${fileKey}?geometry=paths` as string, {
+            method: "GET",
+            headers,
+          });
+          
+          return { fileKey, globalIndex, res };
         });
-
-        // Add geometry=paths to reduce response size (we don't need detailed vector data)
-        const res = await fetch(`https://api.figma.com/v1/files/${fileKey}?geometry=paths` as string, {
-          method: "GET",
-          headers,
-        });
+        
+        // Wait for all files in batch to be fetched
+        const results = await Promise.all(fetchPromises);
+        
+        // Process each result
+        for (const { fileKey, globalIndex, res } of results) {
+          const i = globalIndex;
 
         console.log(`ScanEngine: File ${fileKey} fetch response:`, res.status);
 
@@ -366,6 +383,7 @@ export class ScanEngine {
         await this.scanFileJsonInternal(fileJson, fileKey);
         const afterCount = this.records.length;
         console.log(`ScanEngine: File ${fileKey} scan complete. Found ${afterCount - beforeCount} instances in this file`);
+        }
       }
     } catch (error) {
       const errorMessage = error instanceof Error 
