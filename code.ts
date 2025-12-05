@@ -580,11 +580,6 @@ figma.ui.onmessage = async (msg: UIMessage) => {
         sendToUI({ type: "settings-saved", settings: msg.settings });
         break;
 
-      case "delete-settings":
-        await figma.clientStorage.deleteAsync(SETTINGS_STORAGE_KEY);
-        sendToUI({ type: "settings-deleted" });
-        break;
-
       case "get-project-id": {
         console.log("Backend: Received get-project-id request");
         // Try to get project ID from stored settings
