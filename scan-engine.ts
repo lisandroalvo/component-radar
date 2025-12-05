@@ -304,7 +304,7 @@ export class ScanEngine {
 
     const headers = { "X-Figma-Token": accessToken } as const;
     let skippedFiles = 0;
-    const BATCH_SIZE = 5; // Fetch 5 files at a time for speed
+    const BATCH_SIZE = 10; // Fetch 10 files at a time for maximum speed
 
     try {
       // Process files in batches for parallel fetching
@@ -312,19 +312,15 @@ export class ScanEngine {
         const batchEnd = Math.min(batchStart + BATCH_SIZE, fileKeys.length);
         const batch = fileKeys.slice(batchStart, batchEnd);
         
-        console.log(`ScanEngine: Fetching batch ${Math.floor(batchStart / BATCH_SIZE) + 1}, files ${batchStart + 1}-${batchEnd}/${fileKeys.length}`);
-        
         // Fetch all files in this batch in parallel
+        this.reportProgress({
+          stage: "scanning",
+          message: `Fetching files ${batchStart + 1}-${batchEnd}/${fileKeys.length}...`,
+          totalFiles: fileKeys.length,
+        });
+        
         const fetchPromises = batch.map(async (fileKey, batchIndex) => {
           const globalIndex = batchStart + batchIndex;
-          
-          this.reportProgress({
-            stage: "scanning",
-            message: `Fetching files ${batchStart + 1}-${batchEnd}/${fileKeys.length}...`,
-            currentFile: fileKey,
-            currentFileIndex: globalIndex,
-            totalFiles: fileKeys.length,
-          });
 
           // Add geometry=paths to reduce response size (we don't need detailed vector data)
           const res = await fetch(`https://api.figma.com/v1/files/${fileKey}?geometry=paths` as string, {
@@ -341,8 +337,6 @@ export class ScanEngine {
         // Process each result
         for (const { fileKey, globalIndex, res } of results) {
           const i = globalIndex;
-
-        console.log(`ScanEngine: File ${fileKey} fetch response:`, res.status);
 
         if (!res.ok) {
           const errorText = await res.text();
@@ -371,18 +365,13 @@ export class ScanEngine {
         let fileJson: any;
         try {
           const responseText = await res.text();
-          console.log(`ScanEngine: File ${fileKey} response length:`, responseText.length, 'chars');
           fileJson = JSON.parse(responseText);
-          console.log(`ScanEngine: File ${fileKey} name:`, fileJson.name);
         } catch (jsonError) {
           console.error(`ScanEngine: JSON parse error for file ${fileKey}:`, jsonError);
           throw new Error(`Failed to parse response for file ${fileKey}. The file might be too large or the response is incomplete.`);
         }
 
-        const beforeCount = this.records.length;
         await this.scanFileJsonInternal(fileJson, fileKey);
-        const afterCount = this.records.length;
-        console.log(`ScanEngine: File ${fileKey} scan complete. Found ${afterCount - beforeCount} instances in this file`);
         }
       }
     } catch (error) {
@@ -563,9 +552,6 @@ export class ScanEngine {
     this.nodeIdToKeyMap.clear();
     
     if (fileJson.components) {
-      console.log("📦 File has components metadata:");
-      console.log("   Total components:", Object.keys(fileJson.components).length);
-      
       // Build both forward and reverse mappings
       for (const [key, componentData] of Object.entries(fileJson.components)) {
         const data = componentData as any;
@@ -575,27 +561,7 @@ export class ScanEngine {
           this.nodeIdToKeyMap.set(nodeId, key);
         }
       }
-      
-      console.log("   Built component maps:");
-      console.log("      Key → Node ID entries:", this.componentKeyToNodeIdMap.size);
-      console.log("      Node ID → Key entries:", this.nodeIdToKeyMap.size);
-      
-      // Check if our master component key exists in this file
-      if (this.masterComponent && fileJson.components[this.masterComponent.key]) {
-        const componentInfo = fileJson.components[this.masterComponent.key] as any;
-        const localNodeId = componentInfo.node_id || componentInfo.nodeId;
-        console.log("   ✅ FOUND master component in this file's components:");
-        console.log("      Key:", this.masterComponent.key);
-        console.log("      Node ID in this file:", localNodeId);
-        console.log("      Name:", componentInfo.name);
-      } else {
-        console.log("   ❌ Master component key NOT found in this file's components");
-        console.log("      This means the component is not defined in this file");
-        console.log("      (instances might reference it from another file/library)");
-      }
     }
-
-    console.log(`ScanEngine: Scanning file "${fileName}" (${fileKey}) with ${pages.length} pages`);
 
     this.reportProgress({
       stage: "scanning",
@@ -607,17 +573,7 @@ export class ScanEngine {
       if (this.aborted) break;
       const page = pages[i];
 
-      console.log(`ScanEngine: Scanning page "${page.name}" in file "${fileName}"`);
-
-      this.reportProgress({
-        message: `Scanning page "${page.name}" (${i + 1}/${pages.length})`,
-        currentPage: page.name,
-        currentPageIndex: i,
-        totalPages: pages.length,
-      });
-
       if (page.children) {
-        console.log(`ScanEngine: Page "${page.name}" has ${page.children.length} children`);
         for (const child of page.children) {
           await this.traverseJsonNode(
             child,
@@ -627,8 +583,6 @@ export class ScanEngine {
             page.id
           );
         }
-      } else {
-        console.log(`ScanEngine: Page "${page.name}" has no children!`);
       }
     }
     } catch (error) {
