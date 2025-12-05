@@ -131,8 +131,20 @@ function formatTime(seconds: number): string {
  * Start the scan timer
  */
 function startTimer() {
+  console.log("🕐 START TIMER CALLED!");
+  console.log("Timer element exists?", !!scanTimerEl);
+  console.log("Timer display element exists?", !!timerDisplayEl);
+  
   scanStartTime = Date.now();
-  scanTimerEl.classList.add('active');
+  
+  if (scanTimerEl) {
+    scanTimerEl.classList.add('active');
+    scanTimerEl.style.display = 'block'; // Force display
+    console.log("✅ Timer activated! Classes:", scanTimerEl.className);
+  } else {
+    console.error("❌ Timer element not found!");
+  }
+  
   updateTimer();
   
   if (timerInterval !== null) {
@@ -142,6 +154,8 @@ function startTimer() {
   timerInterval = window.setInterval(() => {
     updateTimer();
   }, 1000);
+  
+  console.log("Timer interval started:", timerInterval);
 }
 
 /**
