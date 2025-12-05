@@ -625,19 +625,21 @@
     .scan-timer {
       display: none;
       text-align: center;
-      padding: 12px 20px;
-      margin: 16px 0;
-      background: linear-gradient(135deg, rgba(24, 160, 251, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
-      border: 1.5px solid rgba(24, 160, 251, 0.3);
-      border-radius: 12px;
+      padding: 20px 30px;
+      margin: 20px 0;
+      background: linear-gradient(135deg, rgba(24, 160, 251, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%);
+      border: 2px solid rgba(24, 160, 251, 0.5);
+      border-radius: 16px;
       font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', 'Consolas', monospace;
-      font-size: 18px;
-      font-weight: 600;
+      font-size: 32px;
+      font-weight: 700;
       color: #18a0fb;
-      letter-spacing: 2px;
-      box-shadow: 0 4px 15px rgba(24, 160, 251, 0.2),
-                  inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      letter-spacing: 4px;
+      box-shadow: 0 8px 25px rgba(24, 160, 251, 0.3),
+                  inset 0 2px 0 rgba(255, 255, 255, 0.2);
       animation: pulse-glow 2s ease-in-out infinite;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
     }
 
     .scan-timer.active {
@@ -646,12 +648,14 @@
 
     @keyframes pulse-glow {
       0%, 100% {
-        box-shadow: 0 4px 15px rgba(24, 160, 251, 0.2),
-                    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        box-shadow: 0 8px 25px rgba(24, 160, 251, 0.3),
+                    inset 0 2px 0 rgba(255, 255, 255, 0.2);
+        transform: scale(1);
       }
       50% {
-        box-shadow: 0 6px 20px rgba(24, 160, 251, 0.4),
-                    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        box-shadow: 0 12px 35px rgba(24, 160, 251, 0.5),
+                    inset 0 2px 0 rgba(255, 255, 255, 0.3);
+        transform: scale(1.02);
       }
     }
 
@@ -2297,7 +2301,8 @@
 
         <!-- Timer Display -->
         <div id="scan-timer" class="scan-timer">
-          ⏱️ <span id="timer-display">00:00</span>
+          <div style="font-size: 14px; opacity: 0.7; margin-bottom: 4px; letter-spacing: 1px;">SCANNING TIME</div>
+          <div style="font-size: 36px; font-weight: 800;">⏱️ <span id="timer-display">00:00</span></div>
         </div>
 
         <!-- Progress Section -->
