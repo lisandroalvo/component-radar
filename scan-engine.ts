@@ -304,7 +304,7 @@ export class ScanEngine {
 
     const headers = { "X-Figma-Token": accessToken } as const;
     let skippedFiles = 0;
-    const BATCH_SIZE = 20; // Fetch 20 files at a time for absolute maximum speed
+    const BATCH_SIZE = 8; // Fetch 8 files at a time (balanced for speed vs rate limits)
 
     try {
       // Process files in batches for parallel fetching
@@ -342,12 +342,14 @@ export class ScanEngine {
           const errorText = await res.text();
           
           // Skip problematic files instead of failing entire scan
-          if (res.status === 400 || res.status === 404 || res.status === 403) {
+          if (res.status === 400 || res.status === 404 || res.status === 403 || res.status === 429) {
             let reason = 'error';
             if (res.status === 404) {
               reason = 'file not found (deleted)';
             } else if (res.status === 403) {
               reason = 'access denied';
+            } else if (res.status === 429) {
+              reason = 'rate limit - try reducing scan scope';
             } else if (errorText.includes('too large')) {
               reason = 'too large';
             } else if (errorText.includes('File type not supported')) {
@@ -383,6 +385,11 @@ export class ScanEngine {
         }
 
         await this.scanFileJsonInternal(fileJson, fileKey);
+        }
+        
+        // Add small delay between batches to avoid rate limiting
+        if (batchEnd < fileKeys.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
       }
     } catch (error) {
