@@ -304,7 +304,7 @@ export class ScanEngine {
 
     const headers = { "X-Figma-Token": accessToken } as const;
     let skippedFiles = 0;
-    const BATCH_SIZE = 10; // Fetch 10 files at a time for maximum speed
+    const BATCH_SIZE = 20; // Fetch 20 files at a time for absolute maximum speed
 
     try {
       // Process files in batches for parallel fetching
