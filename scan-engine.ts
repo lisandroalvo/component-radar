@@ -304,37 +304,49 @@ export class ScanEngine {
 
     const headers = { "X-Figma-Token": accessToken } as const;
 
-    for (let i = 0; i < fileKeys.length; i++) {
-      const fileKey = fileKeys[i];
+    try {
+      for (let i = 0; i < fileKeys.length; i++) {
+        const fileKey = fileKeys[i];
 
-      console.log(`ScanEngine: Scanning file ${i + 1}/${fileKeys.length}, key: ${fileKey}`);
+        console.log(`ScanEngine: Scanning file ${i + 1}/${fileKeys.length}, key: ${fileKey}`);
 
-      this.reportProgress({
-        stage: "scanning",
-        message: `Fetching file ${i + 1}/${fileKeys.length}...`,
-        currentFile: fileKey,
-        currentFileIndex: i,
-        totalFiles: fileKeys.length,
-      });
+        this.reportProgress({
+          stage: "scanning",
+          message: `Fetching file ${i + 1}/${fileKeys.length}...`,
+          currentFile: fileKey,
+          currentFileIndex: i,
+          totalFiles: fileKeys.length,
+        });
 
-      const res = await fetch(`https://api.figma.com/v1/files/${fileKey}` as string, {
-        method: "GET",
-        headers,
-      });
+        const res = await fetch(`https://api.figma.com/v1/files/${fileKey}` as string, {
+          method: "GET",
+          headers,
+        });
 
-      console.log(`ScanEngine: File ${fileKey} fetch response:`, res.status);
+        console.log(`ScanEngine: File ${fileKey} fetch response:`, res.status);
 
-      if (!res.ok) {
-        throw new Error(`Failed to fetch file ${fileKey}: HTTP ${res.status}`);
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(`Failed to fetch file ${fileKey}: HTTP ${res.status} - ${errorText}`);
+        }
+
+        const fileJson: any = await res.json();
+        console.log(`ScanEngine: File ${fileKey} name:`, fileJson.name);
+
+        const beforeCount = this.records.length;
+        await this.scanFileJsonInternal(fileJson, fileKey);
+        const afterCount = this.records.length;
+        console.log(`ScanEngine: File ${fileKey} scan complete. Found ${afterCount - beforeCount} instances in this file`);
       }
-
-      const fileJson: any = await res.json();
-      console.log(`ScanEngine: File ${fileKey} name:`, fileJson.name);
-
-      const beforeCount = this.records.length;
-      await this.scanFileJsonInternal(fileJson, fileKey);
-      const afterCount = this.records.length;
-      console.log(`ScanEngine: File ${fileKey} scan complete. Found ${afterCount - beforeCount} instances in this file`);
+    } catch (error) {
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : typeof error === 'string' 
+        ? error 
+        : JSON.stringify(error);
+      
+      console.error("ScanEngine: External file scan error:", error);
+      throw new Error(errorMessage);
     }
 
     this.reportProgress({
