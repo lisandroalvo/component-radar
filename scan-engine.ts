@@ -303,6 +303,7 @@ export class ScanEngine {
     }
 
     const headers = { "X-Figma-Token": accessToken } as const;
+    let skippedFiles = 0;
 
     try {
       for (let i = 0; i < fileKeys.length; i++) {
@@ -328,6 +329,18 @@ export class ScanEngine {
 
         if (!res.ok) {
           const errorText = await res.text();
+          
+          // If file is too large (HTTP 400), skip it and continue with other files
+          if (res.status === 400 && errorText.includes('too large')) {
+            console.warn(`⚠️ Skipping file ${fileKey}: File is too large for API response`);
+            skippedFiles++;
+            this.reportProgress({
+              stage: "scanning",
+              message: `⚠️ Skipped file ${i + 1}/${fileKeys.length} (too large)`,
+            });
+            continue; // Skip this file and move to the next one
+          }
+          
           throw new Error(`Failed to fetch file ${fileKey}: HTTP ${res.status} - ${errorText}`);
         }
 
@@ -358,9 +371,14 @@ export class ScanEngine {
       throw new Error(errorMessage);
     }
 
+    const scannedFiles = fileKeys.length - skippedFiles;
+    const skippedMessage = skippedFiles > 0 
+      ? ` (${skippedFiles} file${skippedFiles > 1 ? 's' : ''} skipped - too large)` 
+      : '';
+    
     this.reportProgress({
       stage: "complete",
-      message: `External scan complete! Found ${this.records.length} instances.`,
+      message: `External scan complete! Found ${this.records.length} instances in ${scannedFiles}/${fileKeys.length} files${skippedMessage}.`,
     });
 
     return this.records;
