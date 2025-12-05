@@ -304,7 +304,7 @@ export class ScanEngine {
 
     const headers = { "X-Figma-Token": accessToken } as const;
     let skippedFiles = 0;
-    const BATCH_SIZE = 8; // Fetch 8 files at a time (balanced for speed vs rate limits)
+    const BATCH_SIZE = 10; // Fetch 10 files at a time (balanced for speed vs rate limits)
 
     try {
       // Process files in batches for parallel fetching
@@ -373,23 +373,12 @@ export class ScanEngine {
           throw new Error(`Failed to parse response for file ${fileKey}. The file might be too large or the response is incomplete.`);
         }
 
-        // Quick check: if this file doesn't have any instances of our component, skip it entirely
-        if (this.masterComponent && fileJson.components) {
-          const hasComponentDefinition = fileJson.components[this.masterComponent.key];
-          const hasAnyInstances = fileJson.document && this.quickCheckForInstances(fileJson.document);
-          
-          if (!hasComponentDefinition && !hasAnyInstances) {
-            // Skip this file - it doesn't have the component or any instances
-            continue;
-          }
-        }
-
         await this.scanFileJsonInternal(fileJson, fileKey);
         }
         
         // Add small delay between batches to avoid rate limiting
         if (batchEnd < fileKeys.length) {
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise(resolve => setTimeout(resolve, 50));
         }
       }
     } catch (error) {
@@ -414,40 +403,6 @@ export class ScanEngine {
     });
 
     return this.records;
-  }
-
-  /**
-   * Quick check if a document contains any instances of our component (fast pre-check)
-   */
-  private quickCheckForInstances(doc: any): boolean {
-    if (!this.masterComponent || !doc) return false;
-    
-    const checkNode = (node: any): boolean => {
-      if (!node) return false;
-      
-      // Check if this node is an instance of our component
-      if (node.type === 'INSTANCE' && node.componentId === this.masterComponent!.key) {
-        return true;
-      }
-      
-      // Recursively check children (but only first few levels for speed)
-      if (node.children && Array.isArray(node.children)) {
-        for (const child of node.children) {
-          if (checkNode(child)) return true;
-        }
-      }
-      
-      return false;
-    };
-    
-    // Check document pages
-    if (doc.children && Array.isArray(doc.children)) {
-      for (const page of doc.children) {
-        if (checkNode(page)) return true;
-      }
-    }
-    
-    return false;
   }
 
   /**
