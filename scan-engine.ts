@@ -490,8 +490,9 @@ export class ScanEngine {
   private async scanFileJsonInternal(fileJson: any, fileKey: string): Promise<void> {
     if (this.aborted) return;
 
-    const fileName: string = fileJson.name || fileJson.document?.name || "Untitled";
-    const pages: JsonNode[] = (fileJson.document?.children || []) as JsonNode[];
+    try {
+      const fileName: string = fileJson.name || fileJson.document?.name || "Untitled";
+      const pages: JsonNode[] = (fileJson.document?.children || []) as JsonNode[];
     
     // Build bidirectional maps of component keys to their local node IDs in this file
     this.componentKeyToNodeIdMap.clear();
@@ -565,6 +566,16 @@ export class ScanEngine {
       } else {
         console.log(`ScanEngine: Page "${page.name}" has no children!`);
       }
+    }
+    } catch (error) {
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : typeof error === 'string' 
+        ? error 
+        : JSON.stringify(error);
+      
+      console.error(`ScanEngine: Error scanning file ${fileKey}:`, error);
+      throw new Error(`Failed to scan file: ${errorMessage}`);
     }
   }
 

@@ -326,9 +326,17 @@ async function handleStartScan(config: ScanConfig) {
 
     currentScan = null;
   } catch (error) {
+    const errorMessage = error instanceof Error 
+      ? error.message 
+      : typeof error === 'string' 
+      ? error 
+      : JSON.stringify(error);
+    
+    console.error("Scan error details:", error);
+    
     sendToUI({
       type: "scan-error",
-      error: `Scan failed: ${error}`,
+      error: `Scan failed: ${errorMessage}`,
     });
     currentScan = null;
   }
