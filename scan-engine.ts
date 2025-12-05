@@ -341,21 +341,21 @@ export class ScanEngine {
         if (!res.ok) {
           const errorText = await res.text();
           
-          // If file is too large or unsupported type (HTTP 400), skip it and continue
-          if (res.status === 400) {
-            let reason = 'unsupported';
-            if (errorText.includes('too large')) {
+          // Skip problematic files instead of failing entire scan
+          if (res.status === 400 || res.status === 404 || res.status === 403) {
+            let reason = 'error';
+            if (res.status === 404) {
+              reason = 'file not found (deleted)';
+            } else if (res.status === 403) {
+              reason = 'access denied';
+            } else if (errorText.includes('too large')) {
               reason = 'too large';
             } else if (errorText.includes('File type not supported')) {
-              reason = 'unsupported file type (e.g. FigJam)';
+              reason = 'unsupported type';
             }
             
             console.warn(`⚠️ Skipping file ${fileKey}: ${reason}`);
             skippedFiles++;
-            this.reportProgress({
-              stage: "scanning",
-              message: `⚠️ Skipped file ${i + 1}/${fileKeys.length} (${reason})`,
-            });
             continue; // Skip this file and move to the next one
           }
           
