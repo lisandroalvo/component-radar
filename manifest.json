@@ -2,7 +2,8 @@
   "name": "Component Radar",
   "id": "1578276123835942218",
   "api": "1.0.0",
- "main": "code.js",
+  "version": "1.1.0",
+  "main": "code.js",
   "ui": "ui.html",
   "editorType": ["figma"],
   "networkAccess": {
