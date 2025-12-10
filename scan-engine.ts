@@ -42,15 +42,19 @@ export class ScanEngine {
   }
 
   /**
-   * Report progress to UI
+   * Report progress to UI (with error handling for closed UI)
    */
   private reportProgress(progress: Partial<ScanProgress>) {
     if (this.progressCallback) {
-      this.progressCallback(Object.assign({
-        stage: progress.stage || "scanning",
-        instancesFound: this.records.length,
-        message: progress.message || "",
-      }, progress));
+      try {
+        this.progressCallback(Object.assign({
+          stage: progress.stage || "scanning",
+          instancesFound: this.records.length,
+          message: progress.message || "",
+        }, progress));
+      } catch (error) {
+        // Silently ignore UI errors (happens when UI is closed)
+      }
     }
   }
 
@@ -304,119 +308,114 @@ export class ScanEngine {
 
     const headers = { "X-Figma-Token": accessToken } as const;
     let skippedFiles = 0;
-    const BATCH_SIZE = 10; // Fetch 10 files at a time (balanced for speed vs rate limits)
+    let successfulFiles = 0;
 
-    try {
-      // Process files in batches for parallel fetching
-      for (let batchStart = 0; batchStart < fileKeys.length; batchStart += BATCH_SIZE) {
-        const batchEnd = Math.min(batchStart + BATCH_SIZE, fileKeys.length);
-        const batch = fileKeys.slice(batchStart, batchEnd);
-        
-        // Fetch all files in this batch in parallel
-        this.reportProgress({
-          stage: "scanning",
-          message: `Fetching files ${batchStart + 1}-${batchEnd}/${fileKeys.length}...`,
-          totalFiles: fileKeys.length,
+    console.log("\n🚀 STARTING SCAN: Processing all files\n");
+
+    // Process each file one by one - SIMPLE and RELIABLE
+    // NOTE: No outer try-catch here - we handle all errors inside the loop
+    // This ensures the scan ALWAYS completes, even if some files fail
+    for (let i = 0; i < fileKeys.length; i++) {
+      if (this.aborted) {
+        console.log("\n⛔ Scan aborted\n");
+        break;
+      }
+
+      const fileKey = fileKeys[i];
+      console.log(`\n[${i + 1}/${fileKeys.length}] Processing ${fileKey}`);
+      
+      this.reportProgress({
+        stage: "scanning",
+        message: `Processing ${i + 1}/${fileKeys.length}...`,
+        totalFiles: fileKeys.length,
+      });
+
+      try {
+        // Fetch with geometry=paths to reduce response size
+        const res = await fetch(`https://api.figma.com/v1/files/${fileKey}?geometry=paths` as string, {
+          method: "GET",
+          headers,
         });
         
-        const fetchPromises = batch.map(async (fileKey, batchIndex) => {
-          const globalIndex = batchStart + batchIndex;
-
-          // Add geometry=paths to reduce response size (we don't need detailed vector data)
-          const res = await fetch(`https://api.figma.com/v1/files/${fileKey}?geometry=paths` as string, {
-            method: "GET",
-            headers,
-          });
-          
-          return { fileKey, globalIndex, res };
-        });
-        
-        // Wait for all files in batch to be fetched
-        const results = await Promise.all(fetchPromises);
-        
-        // Process each result
-        for (const { fileKey, globalIndex, res } of results) {
-          const i = globalIndex;
-
         if (!res.ok) {
-          const errorText = await res.text();
-          
-          // Skip problematic files instead of failing entire scan
-          if (res.status === 400 || res.status === 404 || res.status === 403 || res.status === 429) {
-            let reason = 'error';
-            if (res.status === 404) {
-              reason = 'file not found (deleted)';
-            } else if (res.status === 403) {
-              reason = 'access denied';
-            } else if (res.status === 429) {
-              reason = 'rate limit - try reducing scan scope';
-            } else if (errorText.includes('too large')) {
-              reason = 'too large';
-            } else if (errorText.includes('File type not supported')) {
-              reason = 'unsupported type';
-            }
-            
-            console.warn(`⚠️ Skipping file ${fileKey}: ${reason}`);
-            skippedFiles++;
-            
-            // Report progress even for skipped files
-            this.reportProgress({
-              stage: "scanning",
-              message: `Skipped file ${i + 1}/${fileKeys.length} (${reason})`,
-              currentFileIndex: i,
-              totalFiles: fileKeys.length,
-            });
-            
-            continue; // Skip this file and move to the next one
-          }
-          
-          throw new Error(`Failed to fetch file ${fileKey}: HTTP ${res.status} - ${errorText}`);
+          console.warn(`⚠️ Skipped: HTTP ${res.status}`);
+          skippedFiles++;
+          continue;
         }
 
+        // Parse with detailed error handling
+        let responseText: string;
         let fileJson: any;
+        
         try {
-          const responseText = await res.text();
-          fileJson = JSON.parse(responseText);
-        } catch (jsonError) {
-          console.error(`ScanEngine: JSON parse error for file ${fileKey}:`, jsonError);
-          throw new Error(`Failed to parse response for file ${fileKey}. The file might be too large or the response is incomplete.`);
+          responseText = await res.text();
+        } catch (textError: any) {
+          console.error(`⚠️ Failed to read response text: ${textError?.message}`);
+          skippedFiles++;
+          continue;
         }
-
+        
+        // Check if response is too large or empty
+        if (!responseText || responseText.length === 0) {
+          console.error(`⚠️ Empty response received`);
+          skippedFiles++;
+          continue;
+        }
+        
+        if (responseText.length > 100000000) { // 100MB limit
+          console.error(`⚠️ Response too large (${Math.round(responseText.length / 1000000)}MB) - file might be too complex`);
+          skippedFiles++;
+          continue;
+        }
+        
+        try {
+          fileJson = JSON.parse(responseText);
+        } catch (parseError: any) {
+          console.error(`⚠️ Failed to parse JSON: ${parseError?.message}`);
+          console.error(`   Response length: ${responseText.length} bytes`);
+          console.error(`   Response preview: ${responseText.substring(0, 200)}...`);
+          skippedFiles++;
+          continue;
+        }
+        
+        // Validate the response structure
+        if (!fileJson || typeof fileJson !== 'object') {
+          console.error(`⚠️ Invalid JSON structure - expected object, got ${typeof fileJson}`);
+          skippedFiles++;
+          continue;
+        }
+        
+        if (!fileJson.document) {
+          console.error(`⚠️ Invalid JSON structure - missing 'document' field`);
+          skippedFiles++;
+          continue;
+        }
+        
+        // Scan
         await this.scanFileJsonInternal(fileJson, fileKey);
         
-        // Report progress after each file is processed
-        this.reportProgress({
-          stage: "scanning",
-          message: `Scanned file ${i + 1}/${fileKeys.length}... [${i + 1}s]`,
-          currentFileIndex: i,
-          totalFiles: fileKeys.length,
-        });
-        }
+        console.log(`✅ Done - Found ${this.records.length} total instances`);
+        successfulFiles++;
         
-        // Add small delay between batches to avoid rate limiting
-        if (batchEnd < fileKeys.length) {
-          await new Promise(resolve => setTimeout(resolve, 50));
-        }
+      } catch (error: any) {
+        console.error(`⚠️ Skipped file ${fileKey}: ${error?.message || 'unknown error'}`);
+        skippedFiles++;
+        // Continue to next file - don't let one error stop the entire scan
       }
-    } catch (error) {
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : typeof error === 'string' 
-        ? error 
-        : JSON.stringify(error);
-      
-      console.error("ScanEngine: External file scan error:", error);
-      throw new Error(errorMessage);
     }
 
-    const scannedFiles = fileKeys.length - skippedFiles;
-    const skippedMessage = skippedFiles > 0 
-      ? ` (${skippedFiles} file${skippedFiles > 1 ? 's' : ''} skipped)` 
-      : '';
+    console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log(`🎉 SCAN COMPLETE`);
+    console.log(`   Instances found: ${this.records.length}`);
+    console.log(`   Successful: ${successfulFiles}/${fileKeys.length}`);
+    console.log(`   Skipped: ${skippedFiles}/${fileKeys.length}`);
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+    
+    const skippedMsg = skippedFiles > 0 ? ` (${skippedFiles} had errors)` : '';
     
     this.reportProgress({
       stage: "complete",
-      message: `External scan complete! Found ${this.records.length} instances in ${scannedFiles}/${fileKeys.length} files${skippedMessage}.`,
+      message: `Scan complete! Found ${this.records.length} instances in ${successfulFiles}/${fileKeys.length} files${skippedMsg}.`,
     });
 
     return this.records;
@@ -522,7 +521,8 @@ export class ScanEngine {
         }
       }
 
-      if (queue.length % 200 === 0) {
+      // Minimal yielding for maximum speed - only every 1000 nodes
+      if (queue.length % 1000 === 0) {
         await new Promise((resolve) => setTimeout(resolve, 0));
       }
     }
@@ -584,7 +584,8 @@ export class ScanEngine {
         : JSON.stringify(error);
       
       console.error(`ScanEngine: Error scanning file ${fileKey}:`, error);
-      throw new Error(`Failed to scan file: ${errorMessage}`);
+      // Don't throw - just log and continue with other files
+      console.warn(`⚠️ Skipping file ${fileKey} due to error: ${errorMessage}`);
     }
   }
 

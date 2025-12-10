@@ -87,10 +87,14 @@ async function getProjectFileKeys(
   }
 
   const json: any = await res.json();
-  console.log("getProjectFileKeys: API response:", json);
+  console.log("getProjectFileKeys: API response received");
   const files = (json.files || []) as Array<{ key: string }>;
-  console.log("getProjectFileKeys: Extracted", files.length, "file keys");
-  return files.map((f) => f.key).filter(Boolean);
+  console.log(`getProjectFileKeys: Extracted ${files.length} file keys`);
+  
+  // Return ALL files - no limiting here
+  const fileKeys = files.map((f) => f.key).filter(Boolean);
+  console.log(`getProjectFileKeys: Returning ${fileKeys.length} valid file keys`);
+  return fileKeys;
 }
 
 /**
@@ -257,7 +261,11 @@ async function handleStartScan(config: ScanConfig) {
 
       console.log("Backend: Fetching file keys from project", projectId);
       const fileKeys = await getProjectFileKeys(projectId, token);
-      console.log("Backend: Found", fileKeys.length, "files in project");
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.log("📁 PROJECT FILES DISCOVERY");
+      console.log(`   Total files found: ${fileKeys.length}`);
+      console.log(`   Files to scan: ${fileKeys.length}`);
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
       if (fileKeys.length === 0) {
         console.log("Backend: No files found, aborting");
@@ -268,13 +276,13 @@ async function handleStartScan(config: ScanConfig) {
         return;
       }
 
-      console.log("Backend: Starting scanExternalFiles with", fileKeys.length, "files");
+      console.log(`\n🚀 Starting external file scan with ${fileKeys.length} files...\n`);
       records = await currentScan.scanExternalFiles(
         config.masterComponent,
         fileKeys,
         token
       );
-      console.log("Backend: scanExternalFiles complete, found", records.length, "instances");
+      console.log(`\n✅ Scan complete! Found ${records.length} instances across ${fileKeys.length} files\n`);
     } else if (config.scope === "selected-files") {
       // Optional future enhancement: scan specific file keys via REST API
       if (!config.fileKeys || config.fileKeys.length === 0) {
@@ -333,6 +341,13 @@ async function handleStartScan(config: ScanConfig) {
     try {
       if (error instanceof Error) {
         errorMessage = error.message;
+        
+        // Provide more helpful error messages for common issues
+        if (errorMessage.includes("Failed to parse") || errorMessage.includes("JSON")) {
+          errorMessage = `Failed to parse response for a file. The file might be too large or the response is incomplete.\n\nTips:\n- Try scanning fewer files\n- Some files might be too complex for scanning\n- Check your network connection`;
+        } else if (errorMessage.includes("Failed to scan file")) {
+          errorMessage = `${errorMessage}\n\nThe scan will continue with other files.`;
+        }
       } else if (typeof error === 'string') {
         errorMessage = error;
       } else if (error && typeof error === 'object') {
